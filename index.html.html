@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>dla mojej ulubionej</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background: #090a0d;
+    }
+
+    body {
+      position: relative;
+      color: #39ff14;
+      font-family: "Press Start 2P", monospace;
+      touch-action: manipulation;
+    }
+
+    #scene {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #090a0d;
+    }
+
+    .controls {
+      position: fixed;
+      left: 50%;
+      bottom: 43px;
+      z-index: 2;
+      display: flex;
+      gap: 5px;
+      transform: translateX(-50%);
+    }
+
+    .digit {
+      width: 27px;
+      height: 25px;
+      padding: 0;
+      border: 1px solid rgba(57, 255, 20, 0.43);
+      border-radius: 0;
+      background: rgba(9, 10, 13, 0.78);
+      color: rgba(57, 255, 20, 0.72);
+      font: 9px "Press Start 2P", monospace;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .digit:hover,
+    .digit:focus-visible,
+    .digit.active {
+      outline: none;
+      border-color: #39ff14;
+      color: #39ff14;
+      background: rgba(57, 255, 20, 0.12);
+      box-shadow: 0 0 8px rgba(57, 255, 20, 0.22);
+    }
+
+    .hint {
+      position: fixed;
+      z-index: 2;
+      right: 8px;
+      bottom: 13px;
+      left: 8px;
+      color: #39ff14;
+      text-align: center;
+      white-space: nowrap;
+      font: 8px "Press Start 2P", monospace;
+      text-shadow: 0 0 5px rgba(57, 255, 20, 0.45);
+      pointer-events: none;
+    }
+
+    @media (max-width: 420px) {
+      .controls {
+        bottom: 42px;
+        gap: 4px;
+      }
+
+      .digit {
+        width: 25px;
+        height: 24px;
+        font-size: 8px;
+      }
+
+      .hint {
+        font-size: 7px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <canvas id="scene"></canvas>
+
+  <div class="controls" aria-label="Wybierz bukiet">
+    <button class="digit active" type="button" data-number="1" aria-label="Bukiet 1">1</button>
+    <button class="digit" type="button" data-number="2" aria-label="Bukiet 2">2</button>
+    <button class="digit" type="button" data-number="3" aria-label="Bukiet 3">3</button>
+    <button class="digit" type="button" data-number="4" aria-label="Bukiet 4">4</button>
+    <button class="digit" type="button" data-number="5" aria-label="Bukiet 5">5</button>
+    <button class="digit" type="button" data-number="6" aria-label="Bukiet 6">6</button>
+    <button class="digit" type="button" data-number="7" aria-label="Bukiet 7">7</button>
+    <button class="digit" type="button" data-number="8" aria-label="Bukiet 8">8</button>
+    <button class="digit" type="button" data-number="9" aria-label="Bukiet 9">9</button>
+  </div>
+
+  <div class="hint">wcisnij dowola cyfre od 1 do 9 :)</div>
+
+  <script type="module">
+    import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js";
+
+    const canvas = document.getElementById("scene");
+    const backgroundColor = 0x090a0d;
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      antialias: false,
+      alpha: false,
+      powerPreference: "high-performance"
+    });
+
+    renderer.setPixelRatio(1);
+    renderer.setClearColor(backgroundColor, 1);
+    renderer.outputColorSpace = THREE.SRGBColorSpace;
+    renderer.toneMapping = THREE.NoToneMapping;
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(backgroundColor);
+
+    const camera = new THREE.OrthographicCamera(-4.5, 4.5, 4, -4, 0.1, 80);
+    camera.position.set(0, 0, 12);
+    camera.lookAt(0, 0, 0);
+
+    scene.add(new THREE.AmbientLight(0xfff0e8, 1.08));
+
+    const keyLight = new THREE.DirectionalLight(0xffe6dc, 1.08);
+    keyLight.position.set(-4, 7, 9);
+    scene.add(keyLight);
+
+    const rimLight = new THREE.DirectionalLight(0xc3d9ff, 0.55);
+    rimLight.position.set(5, 1, -4);
+    scene.add(rimLight);
+
+    const bouquets = [
+      {
+        name: "róże",
+        layout: "rounded",
+        count: 11,
+        palette: [0xc5224e, 0xe83e63, 0xf27689, 0xf5a6aa],
+        center: 0xf7c56b,
+        leaf: 0x57936a,
+        ribbon: 0x9e2548,
+        petals: 9,
+        layers: 4,
+        style: "rose"
+      },
+      {
+        name: "goździki",
+        layout: "cloud",
+        count: 12,
+        palette: [0xe94d40, 0xff7868, 0xd93866, 0xf5a28b],
+        center: 0xf4d2a0,
+        leaf: 0x5e946c,
+        ribbon: 0xbe4f56,
+        petals: 11,
+        layers: 3,
+        style: "carnation"
+      },
+      {
+        name: "tulipany",
+        layout: "tall",
+        count: 10,
+        palette: [0xff921e, 0xffc21e, 0xe95436, 0xf2d76b],
+        center: 0x7c5033,
+        leaf: 0x64904c,
+        ribbon: 0xe48a30,
+        petals: 6,
+        layers: 1,
+        style: "tulip"
+      },
+      {
+        name: "lilie",
+        layout: "open",
+        count: 8,
+        palette: [0xf6eee0, 0xffc5d2, 0xc08dd2, 0xffffff],
+        center: 0x9f6654,
+        leaf: 0x64876d,
+        ribbon: 0xb88da5,
+        petals: 6,
+        layers: 2,
+        style: "lily"
+      },
+      {
+        name: "piwonie",
+        layout: "cluster",
+        count: 9,
+        palette: [0xd51970, 0xf03588, 0xff75a8, 0xf2a3c0],
+        center: 0xf8d176,
+        leaf: 0x588a60,
+        ribbon: 0xb92d70,
+        petals: 12,
+        layers: 4,
+        style: "peony"
+      },
+      {
+        name: "kosmosy",
+        layout: "meadow",
+        count: 13,
+        palette: [0x387bd2, 0x63a9f0, 0x9bc8f6, 0xf4e0a0],
+        center: 0xf1bd3f,
+        leaf: 0x638d62,
+        ribbon: 0x426dad,
+        petals: 10,
+        layers: 1,
+        style: "cosmos"
+      },
+      {
+        name: "irysy",
+        layout: "sweep",
+        count: 9,
+        palette: [0x5140ad, 0x7763d8, 0x352c85, 0xa18cdf],
+        center: 0xf4c44f,
+        leaf: 0x62876a,
+        ribbon: 0x5140ad,
+        petals: 6,
+        layers: 2,
+        style: "iris"
+      },
+      {
+        name: "frezje",
+        layout: "cascade",
+        count: 12,
+        palette: [0xe8c31b, 0xffa220, 0xf36d3d, 0xffe56b],
+        center: 0xa34e37,
+        leaf: 0x72904d,
+        ribbon: 0xc89030,
+        petals: 7,
+        layers: 2,
+        style: "freesia"
+      },
+      {
+        name: "kwiaty polne",
+        layout: "wild",
+        count: 14,
+        palette: [0x32a98f, 0xf05c91, 0x6397df, 0xffca50],
+        center: 0xf3db77,
+        leaf: 0x568b63,
+        ribbon: 0x348e7d,
+        petals: 8,
+        layers: 2,
+        style: "wildflower"
+      }
+    ];
+
+    const styleShapes = {
+      rose: { length: 0.68, width: 0.25, bulge: 0.12, center: 0.12 },
+      carnation: { length: 0.72, width: 0.25, bulge: 0.11, center: 0.13 },
+      tulip: { length: 0.84, width: 0.29, bulge: 0.1, center: 0.12 },
+      lily: { length: 1.02, width: 0.19, bulge: 0.09, center: 0.12 },
+      peony: { length: 0.68, width: 0.28, bulge: 0.13, center: 0.14 },
+      cosmos: { length: 0.86, width: 0.17, bulge: 0.065, center: 0.14 },
+      iris: { length: 0.88, width: 0.24, bulge: 0.11, center: 0.13 },
+      freesia: { length: 0.76, width: 0.24, bulge: 0.11, center: 0.12 },
+      wildflower: { length: 0.79, width: 0.18, bulge: 0.08, center: 0.13 }
+    };
+
+    let currentBouquet = null;
+    let transition = null;
+    let currentNumber = 1;
+    let previousTime = 0;
+
+    function mulberry32(seed) {
+      return function () {
+        let value = seed += 0x6D2B79F5;
+        value = Math.imul(value ^ value >>> 15, value | 1);
+        value ^= value + Math.imul(value ^ value >>> 7, value | 61);
+        return ((value ^ value >>> 14) >>> 0) / 4294967296;
+      };
+    }
+
+    function makeMaterial(color, options = {}) {
+      return new THREE.MeshStandardMaterial({
+        color,
+        emissive: color,
+        emissiveIntensity: options.emissiveIntensity ?? 0.075,
+        roughness: 0.82,
+        metalness: 0,
+        flatShading: true,
+        transparent: true,
+        opacity: options.opacity ?? 1,
+        depthWrite: false,
+        side: THREE.DoubleSide
+      });
+    }
+
+    function addRetroMesh(parent, geometry, color, options = {}) {
+      const solid = new THREE.Mesh(geometry, makeMaterial(color, options));
+      solid.position.copy(options.position || new THREE.Vector3());
+      solid.rotation.copy(options.rotation || new THREE.Euler());
+      solid.scale.copy(options.scale || new THREE.Vector3(1, 1, 1));
+      parent.add(solid);
+
+      if (options.wire !== false) {
+        const wire = new THREE.Mesh(
+          geometry,
+          new THREE.MeshBasicMaterial({
+            color: options.wireColor ?? 0x302b32,
+            wireframe: true,
+            transparent: true,
+            opacity: options.wireOpacity ?? 0.085,
+            depthWrite: false,
+            side: THREE.DoubleSide
+          })
+        );
+        wire.position.copy(solid.position);
+        wire.rotation.copy(solid.rotation);
+        wire.scale.copy(solid.scale);
+        wire.scale.multiplyScalar(1.003);
+        parent.add(wire);
+      }
+
+      return solid;
+    }
+
+    function createPetalGeometry(length, width, bulge, style, randomValue) {
+      const longitudinalSegments = 10;
+      const crossSegments = 8;
+      const positions = [];
+      const indices = [];
+
+      for (let row = 0; row <= longitudinalSegments; row++) {
+        const t = row / longitudinalSegments;
+        const envelope = Math.pow(Math.max(0, Math.sin(Math.PI * t)), 0.7);
+
+        for (let column = 0; column <= crossSegments; column++) {
+          const u = column / crossSegments * 2 - 1;
+          let shapeFactor = 1;
+
+          if (style === "tulip") {
+            shapeFactor = 0.68 + 0.43 * t;
+          } else if (style === "cosmos" || style === "wildflower") {
+            shapeFactor = 0.9 + 0.1 * Math.cos(u * Math.PI);
+          } else if (style === "lily") {
+            shapeFactor = 0.67 + 0.57 * Math.sin(t * Math.PI * 0.84);
+          } else if (style === "iris") {
+            shapeFactor = 0.7 + 0.4 * Math.sin(t * Math.PI);
+          } else if (style === "freesia") {
+            shapeFactor = 0.78 + 0.24 * Math.sin(t * Math.PI);
+          } else if (style === "rose") {
+            shapeFactor = 0.84 + 0.18 * Math.sin(t * Math.PI * 2 + randomValue);
+          } else if (style === "peony") {
+            shapeFactor = 0.9 + 0.13 * Math.sin(t * Math.PI * 3 + randomValue);
+          } else if (style === "carnation") {
+            shapeFactor = 0.85 + 0.17 * Math.cos(u * Math.PI * 4 + t * 5);
+          }
+
+          const x = u * width * envelope * shapeFactor;
+          const y = t * length;
+          const scallop = style === "carnation"
+            ? Math.cos(u * Math.PI * 5 + t * 6) * 0.027
+            : 0;
+          const z = Math.sin(Math.PI * t) * bulge * (1 - u * u) +
+            Math.sin(t * Math.PI * 2 + randomValue) * 0.012 +
+            scallop;
+
+          positions.push(x, y, z);
+        }
+      }
+
+      for (let row = 0; row < longitudinalSegments; row++) {
+        for (let column = 0; column < crossSegments; column++) {
+          const a = row * (crossSegments + 1) + column;
+          const b = a + crossSegments + 1;
+          indices.push(a, b, a + 1, b, b + 1, a + 1);
+        }
+      }
+
+      const geometry = new THREE.BufferGeometry();
+      geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geometry.setIndex(indices);
+      geometry.computeVertexNormals();
+      return geometry;
+    }
+
+    function createStem(parent, start, end, color, radius = 0.035) {
+      const direction = new THREE.Vector3().subVectors(end, start);
+      const length = direction.length();
+      const geometry = new THREE.CylinderGeometry(radius * 0.72, radius, length, 6, 1, false);
+      const center = new THREE.Vector3().addVectors(start, end).multiplyScalar(0.5);
+      const stem = addRetroMesh(parent, geometry, color, {
+        position: center,
+        wireColor: 0x263d2c,
+        wireOpacity: 0.09
+      });
+      stem.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+    }
+
+    function createLeaf(parent, position, direction, color, scale, seed) {
+      const geometry = createPetalGeometry(0.72, 0.17, 0.09, "wildflower", seed);
+      const leaf = addRetroMesh(parent, geometry, color, {
+        position,
+        wireColor: 0x263d2c,
+        wireOpacity: 0.08,
+        scale: new THREE.Vector3(scale, scale, scale)
+      });
+
+      leaf.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        direction.clone().normalize()
+      );
+      leaf.rotateY(seed * 2.4);
+    }
+
+    function createFlower(parent, position, config, random, flowerIndex) {
+      const flower = new THREE.Group();
+      flower.position.copy(position);
+      parent.add(flower);
+
+      const shape = styleShapes[config.style];
+      const scale = 0.68 + random() * 0.34;
+      flower.scale.setScalar(scale);
+      flower.rotation.set(
+        (random() - 0.5) * 0.68,
+        (random() - 0.5) * 0.8,
+        (random() - 0.5) * 0.56
+      );
+
+      const petalCount = Math.max(5, config.petals + Math.floor(random() * 5) - 2);
+      const layers = Math.max(1, config.layers + (random() > 0.72 ? 1 : 0));
+
+      for (let layer = 0; layer < layers; layer++) {
+        const layerCount = Math.max(5, petalCount - layer * 2);
+        const layerScale = 1 - layer * 0.2;
+        const offset = layer % 2 ? Math.PI / layerCount : 0;
+
+        for (let i = 0; i < layerCount; i++) {
+          const angle = (i / layerCount) * Math.PI * 2 + offset + random() * 0.12;
+          const variation = 0.84 + random() * 0.3;
+          const petalLength = shape.length * layerScale * variation;
+          const petalWidth = shape.width * (0.84 + random() * 0.34) * layerScale;
+          const petalGeometry = createPetalGeometry(
+            petalLength,
+            petalWidth,
+            shape.bulge * (0.76 + random() * 0.56),
+            config.style,
+            random() * 6
+          );
+
+          const colorIndex = (flowerIndex + layer + (random() > 0.65 ? i : 0)) % config.palette.length;
+          const petalColor = config.palette[colorIndex];
+          const petal = new THREE.Group();
+
+          petal.position.set(
+            Math.sin(angle) * shape.center * 0.42,
+            Math.cos(angle) * shape.center * 0.42,
+            layer * 0.04
+          );
+          petal.rotation.z = -angle;
+          petal.rotation.x = (random() - 0.5) * 0.17;
+          petal.rotation.y = (random() - 0.5) * 0.15;
+          flower.add(petal);
+
+          addRetroMesh(petal, petalGeometry, petalColor, {
+            wireColor: 0x30252c,
+            wireOpacity: 0.075,
+            emissiveIntensity: 0.055
+          });
+        }
+      }
+
+      let centerGeometry;
+      if (config.style === "cosmos" || config.style === "wildflower") {
+        centerGeometry = new THREE.SphereGeometry(shape.center, 8, 6);
+      } else if (config.style === "lily" || config.style === "iris") {
+        centerGeometry = new THREE.OctahedronGeometry(shape.center * 1.08, 0);
+      } else {
+        centerGeometry = new THREE.IcosahedronGeometry(shape.center, 1);
+      }
+
+      addRetroMesh(flower, centerGeometry, config.center, {
+        position: new THREE.Vector3(0, 0, shape.center * 0.52),
+        wireColor: 0x493a2d,
+        wireOpacity: 0.1,
+        emissiveIntensity: 0.045
+      });
+
+      if (config.style === "lily" || config.style === "iris") {
+        for (let i = 0; i < 3; i++) {
+          const angle = i * Math.PI * 2 / 3;
+          const stamenGeometry = new THREE.CylinderGeometry(0.012, 0.018, 0.17, 5);
+          const stamen = addRetroMesh(flower, stamenGeometry, 0xf0c45c, {
+            position: new THREE.Vector3(
+              Math.cos(angle) * shape.center * 0.38,
+              Math.sin(angle) * shape.center * 0.38,
+              shape.center * 1.15
+            ),
+            wire: false,
+            emissiveIntensity: 0.04
+          });
+          stamen.rotation.x = Math.PI / 2;
+        }
+      }
+
+      if (config.style === "cosmos" || config.style === "wildflower" || config.style === "freesia") {
+        const seedCount = config.style === "freesia" ? 5 : 7;
+        for (let i = 0; i < seedCount; i++) {
+          const angle = i / seedCount * Math.PI * 2;
+          const dotGeometry = new THREE.SphereGeometry(0.025, 5, 4);
+          addRetroMesh(flower, dotGeometry, i % 2 ? 0x795532 : 0x9b7138, {
+            position: new THREE.Vector3(
+              Math.cos(angle) * shape.center * 0.42,
+              Math.sin(angle) * shape.center * 0.42,
+              shape.center * 0.8
+            ),
+            wire: false,
+            emissiveIntensity: 0.025
+          });
+        }
+      }
+
+      return flower;
+    }
+
+    function layoutPosition(layout, index, count, random) {
+      const t = count <= 1 ? 0.5 : index / (count - 1);
+      const centered = t * 2 - 1;
+      const jitterX = (random() - 0.5) * 0.4;
+      const jitterY = (random() - 0.5) * 0.38;
+      let x = 0;
+      let y = 1.7;
+      let z = (random() - 0.5) * 0.9;
+
+      if (layout === "rounded") {
+        const angle = index * 2.399 + random() * 0.3;
+        const radius = 0.38 + random() * 1.35;
+        x = Math.cos(angle) * radius;
+        y = 1.65 + Math.sin(angle) * 0.88 + jitterY;
+        z += Math.sin(angle * 1.3) * 0.45;
+      } else if (layout === "cloud") {
+        const angle = index * 2.17;
+        const radius = 0.5 + random() * 1.35;
+        x = Math.cos(angle) * radius + jitterX;
+        y = 2.05 + Math.sin(angle) * 0.75 + jitterY;
+        z += Math.cos(angle * 1.8) * 0.42;
+      } else if (layout === "tall") {
+        x = centered * 1.2 + jitterX;
+        y = 1.32 + t * 1.55 + jitterY;
+        z += centered * 0.32;
+      } else if (layout === "open") {
+        const angle = index / count * Math.PI * 2;
+        const radius = 0.8 + random() * 0.85;
+        x = Math.cos(angle) * radius + jitterX;
+        y = 1.84 + Math.sin(angle) * 0.94 + jitterY;
+        z = Math.sin(angle * 1.5) * 0.62;
+      } else if (layout === "cluster") {
+        const angle = index * 2.4;
+        const radius = 0.35 + random() * 1.2;
+        x = Math.cos(angle) * radius;
+        y = 1.72 + Math.sin(angle) * 0.7 + jitterY;
+        z += Math.sin(angle * 1.7) * 0.5;
+      } else if (layout === "meadow") {
+        x = centered * 1.9 + jitterX;
+        y = 1.5 + (1 - Math.abs(centered)) * 0.83 + jitterY;
+        z += centered * 0.28;
+      } else if (layout === "sweep") {
+        const angle = -Math.PI * 0.68 + t * Math.PI * 1.42;
+        x = Math.cos(angle) * 1.55 + jitterX;
+        y = 1.72 + Math.sin(angle) * 0.95 + jitterY;
+        z += Math.sin(angle) * 0.45;
+      } else if (layout === "cascade") {
+        x = centered * 1.72 + jitterX;
+        y = 2.7 - t * 1.45 + Math.sin(t * Math.PI * 2) * 0.24 + jitterY;
+        z += centered * 0.4;
+      } else {
+        const angle = index * 2.18 + t * 2.7;
+        const radius = 0.55 + t * 1.25;
+        x = Math.cos(angle) * radius + jitterX;
+        y = 1.4 + t * 1.25 + jitterY;
+        z = Math.sin(angle) * 0.7;
+      }
+
+      return new THREE.Vector3(x, y, z);
+    }
+
+    function buildBouquet(number) {
+      const config = bouquets[number - 1];
+      const random = mulberry32(5489 + number * 971);
+      const root = new THREE.Group();
+      root.rotation.x = -0.1;
+      root.rotation.z = 0.025;
+      scene.add(root);
+
+      for (let i = 0; i < config.count; i++) {
+        const headPosition = layoutPosition(config.layout, i, config.count, random);
+        const basePosition = new THREE.Vector3(
+          headPosition.x * (0.12 + random() * 0.1),
+          -2.55 + random() * 0.2,
+          headPosition.z * 0.13
+        );
+
+        createStem(root, basePosition, headPosition, config.leaf, 0.032 + random() * 0.014);
+
+        const side = random() > 0.5 ? 1 : -1;
+        const leafPosition = basePosition.clone().lerp(headPosition, 0.34 + random() * 0.25);
+        leafPosition.x += side * 0.08;
+        leafPosition.z += 0.03;
+
+        createLeaf(
+          root,
+          leafPosition,
+          new THREE.Vector3(side * (0.6 + random() * 0.5), 0.48 + random() * 0.5, 0.18),
+          config.leaf,
+          0.65 + random() * 0.35,
+          random()
+        );
+
+        if (i % 2 === 0) {
+          const secondLeafPosition = basePosition.clone().lerp(headPosition, 0.2 + random() * 0.22);
+          secondLeafPosition.x -= side * 0.06;
+          createLeaf(
+            root,
+            secondLeafPosition,
+            new THREE.Vector3(-side * 0.72, 0.38 + random() * 0.5, -0.1),
+            config.leaf,
+            0.52 + random() * 0.3,
+            random()
+          );
+        }
+
+        createFlower(root, headPosition, config, random, i);
+      }
+
+      const bandGeometry = new THREE.TorusGeometry(0.42, 0.055, 5, 12);
+      const band = addRetroMesh(root, bandGeometry, config.ribbon, {
+        position: new THREE.Vector3(0, -1.73, 0),
+        wireColor: 0x43333a,
+        wireOpacity: 0.08,
+        emissiveIntensity: 0.035
+      });
+      band.rotation.x = Math.PI / 2;
+      band.scale.set(1.2, 0.8, 1);
+
+      const knotGeometry = new THREE.OctahedronGeometry(0.13, 0);
+      addRetroMesh(root, knotGeometry, config.ribbon, {
+        position: new THREE.Vector3(0, -1.73, 0.43),
+        wireColor: 0x43333a,
+        wireOpacity: 0.08,
+        emissiveIntensity: 0.035
+      });
+
+      const coneGeometry = new THREE.ConeGeometry(0.36, 0.8, 7, 1, true);
+      addRetroMesh(root, coneGeometry, config.leaf, {
+        position: new THREE.Vector3(0, -2.2, 0),
+        wireColor: 0x263d2c,
+        wireOpacity: 0.06,
+        opacity: 0.2,
+        emissiveIntensity: 0.025
+      });
+
+      return root;
+    }
+
+    function setOpacity(group, opacity) {
+      group.traverse((object) => {
+        if (!object.isMesh) return;
+
+        const materials = Array.isArray(object.material) ? object.material : [object.material];
+        for (const material of materials) {
+          if (material.transparent) material.opacity = opacity;
+        }
+      });
+    }
+
+    function chooseBouquet(number) {
+      if (number < 1 || number > 9 || number === currentNumber) return;
+
+      currentNumber = number;
+      document.querySelectorAll(".digit").forEach((button) => {
+        button.classList.toggle("active", Number(button.dataset.number) === number);
+      });
+
+      const next = buildBouquet(number);
+      setOpacity(next, 0);
+      next.scale.setScalar(0.88);
+
+      if (transition?.next) {
+        scene.remove(transition.next);
+      }
+
+      if (currentBouquet) {
+        setOpacity(currentBouquet, 1);
+        currentBouquet.scale.setScalar(1);
+      }
+
+      transition = {
+        old: currentBouquet,
+        next,
+        elapsed: 0,
+        duration: 0.68
+      };
+    }
+
+    document.addEventListener("keydown", (event) => {
+      const isDigitKey = event.code.startsWith("Digit") || event.code.startsWith("Numpad");
+      const number = Number(event.key);
+
+      if (isDigitKey && number >= 1 && number <= 9) {
+        event.preventDefault();
+        chooseBouquet(number);
+      }
+    });
+
+    document.querySelectorAll(".digit").forEach((button) => {
+      button.addEventListener("click", () => chooseBouquet(Number(button.dataset.number)));
+    });
+
+    function resize() {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      const aspect = width / height;
+      const renderHeight = Math.max(240, Math.min(700, Math.floor(height * 0.72)));
+      const renderWidth = Math.max(280, Math.floor(renderHeight * aspect));
+
+      renderer.setSize(renderWidth, renderHeight, false);
+      canvas.style.width = "100vw";
+      canvas.style.height = "100vh";
+
+      const viewHeight = 7.5;
+      const viewWidth = viewHeight * aspect;
+      camera.left = -viewWidth / 2;
+      camera.right = viewWidth / 2;
+      camera.top = viewHeight / 2;
+      camera.bottom = -viewHeight / 2;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener("resize", resize);
+    resize();
+
+    currentBouquet = buildBouquet(1);
+
+    function animate(now) {
+      requestAnimationFrame(animate);
+
+      const delta = previousTime
+        ? Math.min(0.05, (now - previousTime) / 1000)
+        : 0.016;
+
+      previousTime = now;
+      const time = now / 1000;
+
+      if (currentBouquet) {
+        currentBouquet.rotation.y += delta * 0.22;
+        currentBouquet.rotation.z = 0.025 + Math.sin(time * 0.65) * 0.022;
+      }
+
+      if (transition) {
+        transition.elapsed += delta;
+        const progress = Math.min(1, transition.elapsed / transition.duration);
+        const eased = progress * progress * (3 - 2 * progress);
+
+        setOpacity(transition.next, eased);
+        transition.next.scale.setScalar(0.88 + eased * 0.12);
+        transition.next.rotation.y += delta * 0.22;
+        transition.next.rotation.z = 0.025 + Math.sin(time * 0.65) * 0.022;
+
+        if (transition.old) {
+          setOpacity(transition.old, 1 - eased);
+          transition.old.scale.setScalar(1 - eased * 0.08);
+        }
+
+        if (progress >= 1) {
+          if (transition.old) scene.remove(transition.old);
+          currentBouquet = transition.next;
+          transition = null;
+        }
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+  </script>
+</body>
+</html>
